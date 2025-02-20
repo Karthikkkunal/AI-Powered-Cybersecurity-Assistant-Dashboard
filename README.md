@@ -38,6 +38,8 @@ The AI-Powered Cybersecurity Assistant Dashboard is a comprehensive, real-time m
 
 - **Build Tool**: Uses [Vite](https://vitejs.dev/) for fast and efficient build and development processes.
 
+- **Backend**: Powered by [Supabase](https://supabase.com/) for database management and real-time data synchronization.
+
 ## Getting Started
 
 ### Prerequisites
@@ -45,6 +47,10 @@ The AI-Powered Cybersecurity Assistant Dashboard is a comprehensive, real-time m
 - **Node.js**: Version 14 or later is required. Download it from the [official website](https://nodejs.org/).
 
 - **npm**: Version 6 or later is required, typically installed alongside Node.js.
+
+- **Docker**: Required for running Supabase locally. Install it from [Docker's official website](https://www.docker.com/).
+
+- **Supabase CLI**: Install the Supabase CLI by following the instructions in the [Supabase documentation](https://supabase.com/docs/guides/cli).
 
 ### Installation
 
@@ -65,6 +71,34 @@ The AI-Powered Cybersecurity Assistant Dashboard is a comprehensive, real-time m
    ```bash
    npm install
    ```
+
+4. **Initialize Supabase**:
+
+   ```bash
+   supabase init
+   ```
+
+   This command sets up the Supabase configuration in your project.
+
+5. **Start Supabase Services**:
+
+   Ensure Docker is running, then start the Supabase services:
+
+   ```bash
+   supabase start
+   ```
+
+   This command launches the local Supabase instance, including the database and authentication services.
+
+6. **Apply Database Migrations**:
+
+   To set up the database schema, apply the existing migrations:
+
+   ```bash
+   supabase db push
+   ```
+
+   This command applies all migrations located in the `supabase/migrations` directory to your local database.
 
 ### Running the Application
 
@@ -95,6 +129,10 @@ The AI-Powered Cybersecurity Assistant Dashboard is a comprehensive, real-time m
 The project follows a modular structure for maintainability and scalability:
 
 ```
+supabase/
+├── migrations/
+│   └── <timestamp>_init.sql
+├── seed.sql
 src/
 ├── components/
 │   ├── AIAgents.tsx
@@ -116,7 +154,11 @@ src/
 └── main.tsx
 ```
 
-- **components/**: Contains React components, each responsible for a specific section of the dashboard.
+- **supabase/migrations/**: Contains SQL migration files for setting up and updating the database schema.
+
+- **supabase/seed.sql**: SQL script for seeding the database with initial data.
+
+- **src/components/**: Contains React components, each responsible for a specific section of the dashboard.
 
 - **App.tsx**: The root component that integrates all individual components.
 
@@ -124,13 +166,37 @@ src/
 
 - **main.tsx**: Entry point of the application.
 
-## Customization
+## Database Management with Supabase
 
-- **Adding New Features**: To introduce new features or modify existing ones, create or update components in the `src/components/` directory.
+### Applying Migrations
 
-- **Global Styles**: Adjust global styles in `src/index.css` as needed.
+To apply database migrations and set up the schema:
 
-- **Layout and Routing**: Modify `src/App.tsx` to change the layout or add new pages.
+```bash
+supabase db push
+```
+
+This command applies all migration files in the `supabase/migrations` directory to your local database.
+
+### Creating New Migrations
+
+When making changes to the database schema, create a new migration file:
+
+```bash
+supabase migration new <migration_name>
+```
+
+Replace `<migration_name>` with a descriptive name for the migration. This command generates a new SQL file in the `supabase/migrations` directory.
+
+### Seeding the Database
+
+To populate the database with initial data:
+
+```bash
+supabase db seed
+```
+
+Ensure that the `supabase/seed.sql` file contains the necessary SQL statements to insert the initial data.
 
 ## Deployment
 
@@ -150,18 +216,104 @@ To deploy the application:
 
    Ensure your server is configured to serve a single-page application (SPA), redirecting all routes to `index.html`.
 
+4. **Supabase Deployment**:
+   
+  To deploy the Supabase backend to a remote instance:
+
+1. **Create a Supabase Project**:
+
+   - Go to [Supabase](https://supabase.com/) and sign in.
+   - Create a new project and note down the project URL and API keys.
+
+3. **Configure Environment Variables**:
+   - In your `.env` file, add the following:
+
+     ```env
+     VITE_SUPABASE_URL=https://your-supabase-project-url.supabase.co
+     VITE_SUPABASE_ANON_KEY=your-anon-key
+     VITE_SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+     ```
+
+4. **Deploy Database Migrations**:
+
+   Push your local database schema to your hosted Supabase project:
+
+   ```bash
+   supabase db push --remote
+   ```
+
+   This will apply all migration files to your remote Supabase instance.
+
+5. **Connect Frontend to Supabase**:
+
+   Ensure your frontend is correctly configured to use the remote Supabase database by updating the API URL in your application.
+
+## Authentication & Authorization
+
+The dashboard integrates **Supabase Authentication** for secure user access.
+
+### Setting Up Authentication
+
+1. **Enable Authentication Providers**:
+   - In the Supabase dashboard, navigate to **Authentication > Providers** and enable email/password authentication.
+   - You can also enable OAuth providers like Google, GitHub, etc.
+
+2. **User Management**:
+   - Use Supabase's authentication API to handle login, registration, and session management.
+   - Example code for user login:
+
+     ```typescript
+     import { createClient } from "@supabase/supabase-js";
+
+     const supabase = createClient(
+       import.meta.env.VITE_SUPABASE_URL,
+       import.meta.env.VITE_SUPABASE_ANON_KEY
+     );
+
+     async function login(email: string, password: string) {
+       const { user, error } = await supabase.auth.signInWithPassword({
+         email,
+         password,
+       });
+
+       if (error) {
+         console.error("Login error:", error.message);
+       } else {
+         console.log("User logged in:", user);
+       }
+     }
+     ```
+
+### Role-Based Access Control (RBAC)
+
+Supabase allows role-based access control (RBAC) via Row-Level Security (RLS).
+
+1. **Enable RLS**:
+   - In Supabase, navigate to **Database > Policies** and enable RLS on relevant tables.
+
+2. **Create Access Policies**:
+   - Example policy to allow only authenticated users to access certain data:
+
+     ```sql
+     CREATE POLICY "Users can only access their own data"
+     ON users
+     FOR SELECT
+     USING (auth.uid() = id);
+     ```
+
+## API Endpoints
+
+The dashboard interacts with Supabase using RESTful API endpoints.
+
+
 ## Contributing
 
 Contributions are welcome! To contribute:
 
 1. Fork the repository.
-
 2. Create a new branch for your feature or bug fix.
-
 3. Commit your changes with clear and descriptive messages.
-
 4. Push your changes to your forked repository.
-
 5. Submit a pull request detailing your changes.
 
 ## License
@@ -173,5 +325,8 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 For support or inquiries:
 
 - **Issues**: Open an issue in the [GitHub repository](https://github.com/Karthikkkunal/AI-Powered-Cybersecurity-Assistant-Dashboard/issues).
-
 - **Contact**: Reach out to the maintainers directly through their GitHub profiles.
+
+---
+
+**Empower your cybersecurity operations with the AI-Powered Cybersecurity Assistant Dashboard.** 
